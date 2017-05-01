@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!--Import Google Icon Font-->
+    <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Ubuntu" />
+    <link href='https://fonts.googleapis.com/css?family=Lato:400,100' rel='stylesheet' type='text/css'>
+    <link href="http://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!--Let browser know website is optimized for mobile-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <style>
+        body {
+            font-family: "Ubuntu";
+            color: white;
+            background: black;
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+
+        #title {
+            color: white;
+            width: 20em;
+            margin-top: 2em;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+            font-size: 25px;
+        }
+
+        #usr {
+            width: 20%;
+            margin-top: 5em;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+        }
+
+        #checkTable {
+            text-align: center;
+            align-content: center;
+            width: 95%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #table {
+            align-content: center;
+            text-align: center;
+            margin-top: 5em;
+            width: 100%;
+        }
+
+        #col {
+            width: 75px;
+            align-content: center;
+            text-align: center;
+        }
+
+        #col2 {
+            align-content: center;
+            text-align: center;
+        }
+        #col3{
+            margin-top: 10px;
+        }
+
+        #x {
+            margin-top: -10px;
+            text-align: center;
+            color: red;
+            font-size: 72px;
+            font-family: "Lato";
+            font-weight: 300;
+        }
+        #timer{
+            text-align: center;
+        }
+
+        input {
+            text-align: center;
+        }
+
+        .col2 {
+            text-align: center;
+            width: 15em;
+        }
+    </style>
+
+
+
+    <script>
+
+        /***************************************************
+        * Tells the server to run the 'runChecks' function
+        ***************************************************/
+        function manualCheck(){
+            socket.emit("runChecks");
+        }
+
+        /***************************************************
+        * Sets all green checkmarks and/or bad 'X's to
+        * loading wheels and removes all screenshots in prep
+        * to be refreshed with new data
+        ***************************************************/
+        function reload(){
+
+            //reset the timer
+            resetTimer();
+
+            //Set the loading wheels on all the pages we're testing
+            var cols = document.getElementsByClassName("col2");
+            for (var i = 0; i < cols.length; i++) {
+                cols[i].innerHTML = "<div class='preloader-wrapper active'><div class='spinner-layer spinner-lightBlue-only'><div class='circle-clipper left'><div class='circle'></div></div><div class='gap-patch'><div class='circle'></div></div><div class='circle-clipper right'><div class='circle'></div></div></div></div>"
+            }
+            //Set the screenshot pictures to empty
+            var picCols = document.getElementsByClassName("col3");
+            for (var i = 0; i < cols.length; i++){
+                picCols[i].innerHTML = "";
+            }
+        }
+
+        /***************************************************
+        * Takes the id of the element (website) to be updated
+        * and puts a green checkmark in the first row and a
+        * screenshot of the loaded webpage in the second row
+        * for that website's column.
+        ***************************************************/
+        function siteGood(id) {
+
+            //set the green checkmark
+            var col = document.getElementById(id);
+            col.innerHTML = "<div class='icon icon--order-success svg'><svg xmlns='http://www.w3.org/2000/svg' width='72px' height='72px'><g fill='none' stroke=#91FF00 stroke-width='2'><circle cx='36' cy='36' r='35' style='stroke-dasharray:240px, 240px; stroke-dashoffset: 480px;'></circle><path d='M17.417,37.778l9.93,9.909l25.444-25.393' style='stroke-dasharray:50px, 50px; stroke-dashoffset: 0px;'></path></g></svg></div>"
+
+            //set the screenshot
+            var picCol = document.getElementById(id + "Pic");
+            picCol.innerHTML = "<img class='responsive-img' src='./" + id + ".png'/>";
+
+        }
+
+        /***************************************************
+        * If a website failed to load correctly, this function
+        * will play an alert sound and display a red 'X' in the
+        * row for given id (website). No screenshot will be
+        * displayed.
+        ***************************************************/
+        function siteBad(id) {
+
+            //play the alert sound
+            var alert = new Audio("Darth Vader NO!.wav");
+            alert.play();
+
+            //display the red 'X'
+            var col = document.getElementById(id);
+            col.innerHTML = "<div id='x'>X</div>"
+        }
+
+        /***************************************************
+        * Creates a timer that will count down from 10 to 0
+        * when the next check will be run
+        ***************************************************/
+        //requires an out-of-scope variable
+        var intervalId;
+        function startTimer(duration, display) {
+            var timer = duration, minutes, seconds;
+            intervalId = setInterval(function () {
+                minutes = parseInt(timer / 60, 10)
+                seconds = parseInt(timer % 60, 10);
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                display.textContent = minutes + ":" + seconds;
+
+                if (--timer < 0) {
+                    timer = duration;
+                }
+            }, 1000);
+        }
+
+        /***************************************************
+        * Resets the timer to 10 minutes
+        ***************************************************/
+        function resetTimer() {
+            clearInterval(intervalId);
+            var tenMinutes = 60 * 10,
+                display    = document.querySelector('#time');
+            startTimer(tenMinutes, display);
+        };
+
+    </script>
+</head>
+
+
+<body>
+
+    <script src="/Users/ryani/node_modules/socket.io-client/dist/socket.io.js"></script>
+    <script>
+
+        /***************************************************
+        * Creates a socket connection with the server.
+        * MUST REMAIN IN <body> !
+        * Handles updates from the server
+        ***************************************************/
+        var socket = io.connect("http://127.0.0.1:8080");
+
+        //on 'connect', log the connection
+        socket.on("connect", function () {
+            console.log("Connected!");
+        });
+
+        //on 'reload', call the reload function
+        socket.on("reload", function(){
+            reload();
+        });
+
+        //on 'check', check the stats and call functions accordingly
+        socket.on("check", function (check) {
+            console.log("Got the check!");
+            var id = check.id;
+            if (check.status == "Good") {
+                siteGood(id);
+            } else {
+                siteBad(id);
+            }
+        });
+
+    </script>
+    
+
+    <div id="mailTag"></div>
+
+    <div id="title">
+        <p>CasperJS Test</p>
+    </div>
+    <div id="usr">
+        <button onclick="manualCheck()">Manual Check</button>
+    </div>
+    <br/>
+    <br/>
+    <div id="timer">Time until next check: <br/><span id="time">10:00</span></div>
+    <div id="checkTable">
+        <table id="table">
+            <tr>
+                <td id="col">YouTube</td>
+            </tr>
+            <tr>
+                <td id="YouTube" class="col2"></td>
+            </tr>
+             <tr>
+                <td id="YouTubePic" class="col3"></td>
+            </tr>
+        </table>
+    </div>
+</body>
+
+</html>
